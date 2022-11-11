@@ -1,0 +1,86 @@
+import org.w3c.dom.NodeList
+
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
+
+android {
+    compileSdk 32
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 32
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            url "/Users/adamadrian-claudiu/Desktop/MavenLib"
+        }
+    }
+    publications{
+        maven(MavenPublication) {
+            groupId "com.my.poc"
+            artifactId "my-poc-id"
+            version "1.0"
+            pom.withXml {
+                def node = asNode()
+                ((NodeList) node.get("packaging")).get(0).value = ".aar"
+                def dependenciesNode = node.appendNode("dependencies")
+                def cl = { Dependency dep ->
+                    if(dep.group == null || dep.version == null || dep.name == null || dep.name== 'unspecified')
+                        return // ignore invalid dependencies
+                    def dependencyNode = dependeniesNode.appendNode("dependency")
+                    dependencyNode.appendNode('groupId', dep.group)
+                    dependencyNode.appendNode('artifactId', dep.name)
+                    dependencyNode.appendNode('version', dep.version)
+
+                    if(!dep.transitive) {
+
+                        def exclusionNode = dependencyNode.appendNode('exclusion').appendNode('exclusion')
+                        exclusionNode.appendNode('groupId', "*")
+                        exclusionNode.appendNode('artifactId', "*")
+                    } else if(!dep.properties.excludeRules.empty) {
+                        def exclusionNode = dependencyNode.appendNode('exclusion').appendNode('exclusion')
+                        dep.properties.excludeRules.each { ExcludeRule rule ->
+                            exclusionNode.appendNode('groupId', rule?.group ?: "*")
+                            exclusionNode.appendNode('artifactId', rule?.module ?: "*")
+                        }
+                    }
+                }
+
+                configurations.api.getAllDependeciens().each cl
+                configurations.implementation.getAllDependencies().each cl
+            }
+        }
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'com.google.android.material:material:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.facebook.react-native:0.64.2'
+
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.4'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'
+}
